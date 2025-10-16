@@ -349,6 +349,7 @@ if TYPE_CHECKING:
     from .zamba import *
     from .zamba2 import *
     from .zoedepth import *
+    from .inflm import *
 else:
     import sys
 
