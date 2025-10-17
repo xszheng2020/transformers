@@ -80,6 +80,13 @@ class INFLMTokenizer(PreTrainedTokenizer):
         self.sp_model.Load(vocab_file)
         self._no_prefix_space_tokens = None
         self.pre_tokenizer = pre_tokenizers.Sequence([Split(pattern =PATTERN,behavior = "isolated", invert = False)])
+
+        ####
+        self.extra_tokens = [f"<extra_token_{i}>" for i in range(141)]
+        self.added_tokens_encoder_ = {t: len(self.sp_model) + i for i, t in enumerate(self.extra_tokens)}
+        self.added_tokens_decoder_ = {v: k for k, v in self.added_tokens_encoder_.items()}
+        ####
+
         super().__init__(
             bos_token=bos_token,
             eos_token=eos_token,
@@ -90,7 +97,7 @@ class INFLMTokenizer(PreTrainedTokenizer):
             **kwargs,
         ) 
 
-        """ Initialisation"""
+
 
     @property
     def no_prefix_space_tokens(self):
@@ -102,7 +109,7 @@ class INFLMTokenizer(PreTrainedTokenizer):
     @property
     def vocab_size(self):
         """Returns vocab size"""
-        return self.sp_model.get_piece_size()
+        return self.sp_model.get_piece_size() + 141
 
     @property
     def bos_token_id(self) -> Optional[int]:
@@ -115,7 +122,7 @@ class INFLMTokenizer(PreTrainedTokenizer):
     def get_vocab(self):
         """Returns vocab as a dict"""
         vocab = {self.convert_ids_to_tokens(i): i for i in range(self.vocab_size)}
-        vocab.update(self.added_tokens_encoder)
+        vocab.update(self.added_tokens_encoder_)
         return vocab
 
     def _tokenize(self, text):
@@ -128,24 +135,27 @@ class INFLMTokenizer(PreTrainedTokenizer):
             texts.extend(self.sp_model.encode(split[0], out_type=str))
         return texts
 
-    def _convert_token_to_id(self, token):
-        """Converts a token (str) in an id using the vocab."""
+    # def _convert_token_to_id(self, token):
+    #     """Converts a token (str) in an id using the vocab."""
        
-        return self.sp_model.piece_to_id(token)
+    #     return self.sp_model.piece_to_id(token)
 
     # def _convert_id_to_token(self, index):
     #     """Converts an index (integer) in a token (str) using the vocab."""
     #     token = self.sp_model.IdToPiece(index)
     #     return token
-
+    
     def _convert_id_to_token(self, index):
-        """Converts an index (integer) in a token (str) using the vocab."""
-        try:
-            token = self.sp_model.IdToPiece(index)
-        except IndexError:
-            print(f"[Warning] Invalid token id {index} replaced with <unk>")
-            token = "<unk>"
-        return token
+        if index < len(self.sp_model):
+            return self.sp_model.IdToPiece(index)
+        else:
+            return self.added_tokens_decoder_.get(index)
+
+    def _convert_token_to_id(self, token):
+        if token in self.added_tokens_encoder_:
+            return self.added_tokens_encoder_[token]
+        else:
+            return self.sp_model.PieceToId(token)
 
     def _maybe_add_prefix_space(self, tokens, decoded):
         if tokens and tokens[0] not in self.no_prefix_space_tokens:
