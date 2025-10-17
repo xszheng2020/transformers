@@ -133,9 +133,18 @@ class INFLMTokenizer(PreTrainedTokenizer):
        
         return self.sp_model.piece_to_id(token)
 
+    # def _convert_id_to_token(self, index):
+    #     """Converts an index (integer) in a token (str) using the vocab."""
+    #     token = self.sp_model.IdToPiece(index)
+    #     return token
+
     def _convert_id_to_token(self, index):
         """Converts an index (integer) in a token (str) using the vocab."""
-        token = self.sp_model.IdToPiece(index)
+        try:
+            token = self.sp_model.IdToPiece(index)
+        except IndexError:
+            print(f"[Warning] Invalid token id {index} replaced with <unk>")
+            token = "<unk>"
         return token
 
     def _maybe_add_prefix_space(self, tokens, decoded):
